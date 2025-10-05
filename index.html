@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KTR 계산기(Leo) Ver 1.0</title>
+  <style>
+    :root{
+      --bg:#0b1020;--panel:#111831;--panel2:#0e162b;--text:#eaf1ff;--muted:#8aa0c8;
+      --blue:#3b82f6;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--border:#1f2a44
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#0b1020 0%,#0a0f1f 100%);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Pretendard,Apple SD Gothic Neo,Noto Sans KR,Helvetica,Arial}
+    .wrap{max-width:1100px;margin:auto;padding:28px 16px}
+    h1{margin:0 0 18px;font-size:22px;letter-spacing:.2px}
+    .grid{display:grid;gap:12px}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px}
+    .row{display:grid;grid-template-columns: 220px 1fr;gap:10px;align-items:center}
+    label{color:var(--muted);font-size:14px}
+    input[type="number"],select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--panel2);color:var(--text)}
+    input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-inner-spin-button{opacity:1}
+    .inline{display:flex;gap:16px;flex-wrap:wrap}
+    .radio{display:flex;gap:10px;align-items:center}
+    .btn{appearance:none;border:1px solid var(--border);background:var(--blue);color:white;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer}
+    .btn.secondary{background:transparent;color:var(--text)}
+    .btn.secondary.active{background:var(--yellow);color:black;font-weight:700}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .muted{color:var(--muted);font-size:14px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:center}
+    th{color:#cfe0ff;font-weight:600}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#0f1d3f;color:#cfe0ff;font-size:12px}
+    .totals{display:flex;gap:16px;flex-wrap:wrap}
+    .kpi{flex:1;min-width:230px;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px}
+    .kpi small{display:block;color:var(--muted)}
+    .kpi strong{display:block;font-size:20px;margin-top:6px}
+    .kpi.negative strong{color:var(--red)}
+    .kpi.positive strong{color:var(--green)}
+    .err{background:#2b1020;border:1px solid #5f1a39;color:#ffc7d6;padding:10px 12px;border-radius:12px}
+    .footer{margin-top:14px;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap grid">
+    <h1>📈 KTR 계산기(Leo) Ver 1.0</h1>
+
+    <!-- 종목 선택 -->
+    <section class="panel grid" style="gap:14px">
+      <h2>거래 종목</h2>
+      <div class="inline">
+        <button class="btn secondary" onclick="selectProduct('나스닥',1)">나스닥</button>
+        <button class="btn secondary" onclick="selectProduct('골드',100)">골드</button>
+        <button class="btn secondary" onclick="selectProduct('오일',100)">오일</button>
+        <button class="btn secondary" onclick="selectProduct('비트코인',1)">비트코인</button>
+        <button class="btn secondary" onclick="selectProduct('유로달러',100000)">유로달러</button>
+        <button class="btn secondary" onclick="selectProduct('파운드달러',100000)">파운드달러</button>
+        <button class="btn secondary" onclick="selectProduct('달러엔',100000)">달러엔</button>
+      </div>
+    </section>
+
+    <!-- 입력 폼 -->
+    <section class="panel grid" style="gap:14px">
+      <div class="row"><label>KTR 값 (포인트, K)</label><input id="K" type="number" step="0.1" value="5.5"></div>
+      <div class="row"><label>1포인트 달러 (1랏 기준, V)</label><input id="V" type="number" step="1" value="100"></div>
+      <div class="row"><label>총 감내 손실 $ (R)</label><input id="R" type="number" step="1" value="200"></div>
+      <div class="row"><label>전체 손절 KTR 배수 (S)</label><input id="S" type="number" step="0.1" value="5.5"></div>
+      <div class="row"><label>익절 KTR 배수 (T)</label><input id="T" type="number" step="0.1" value="3"></div>
+      <div class="row"><label>총 진입 개수 (N)</label><input id="N" type="number" step="1" value="6" min="1" max="50"></div>
+      <div class="row"><label>최소 랏 단위</label><input id="lotStep" type="number" step="0.01" value="0.01"></div>
+      <div class="row"><label>최초 오프셋 (KTR)</label><input id="start" type="number" step="0.1" value="0"></div>
+      <div class="row"><label>진입 간격 (KTR)</label><input id="gap" type="number" step="0.1" value="1"></div>
+      <div class="row">
+        <label>랏수 계산 방식</label>
+        <div class="inline">
+          <label class="radio"><input type="radio" name="mode" value="equal_loss" checked> 동일 손실</label>
+          <label class="radio"><input type="radio" name="mode" value="equal_lot"> 동일 랏</label>
+        </div>
+      </div>
+      <div class="inline">
+        <button id="calc" class="btn">계산하기</button>
+        <button id="csv" class="btn secondary">CSV 내보내기</button>
+      </div>
+      <div id="error" class="err" style="display:none"></div>
+    </section>
+
+    <!-- 결과 -->
+    <section class="totals">
+      <div class="kpi negative"><small>실거래 총손실</small><strong id="totLoss">$0.00</strong></div>
+      <div class="kpi positive"><small>익절시 총 이익</small><strong id="totProfit">$0.00</strong></div>
+      <div class="kpi"><small>총 진입 랏수</small><strong id="totLot">0.00 랏</strong></div>
+    </section>
+
+    <section class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>진입 #</th>
+            <th>오프셋 (KTR)</th>
+            <th>KTR</th>
+            <th>랏</th>
+            <th>손실($)</th>
+            <th>수익($)</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    const $ = sel => document.querySelector(sel);
+    const nf = (n, d=2) => Number(n).toLocaleString('en-US',{minimumFractionDigits:d, maximumFractionDigits:d});
+    const floorStep = (val, step) => {
+      const s = Number(step);
+      if (!isFinite(s) || s<=0) return Math.max(0, Number(val)||0);
+      const v = Number(val)||0;
+      const q = Math.floor((v + 1e-12) / s);
+      return +(q * s).toFixed(6);
+    };
+
+    // 종목 선택 시 계약단위 자동 입력
+    function selectProduct(name, unit){
+      document.querySelector('#V').value = unit;
+      document.querySelectorAll('.btn.secondary').forEach(b=>b.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+
+    function calc(){
+      const K = +$('#K').value, V = +$('#V').value, R = +$('#R').value,
+            S = +$('#S').value, T = +$('#T').value, N = +$('#N').value,
+            start = +$('#start').value, gap = +$('#gap').value,
+            lotStep = +$('#lotStep').value,
+            mode = document.querySelector('input[name="mode"]:checked').value;
+
+      const err = $('#error'); err.style.display='none'; err.textContent='';
+
+      if ([K,V,R,S,T,N,lotStep,gap].some(x=>!(x>0))){
+        err.textContent = '입력 오류: 모든 값은 양수여야 합니다.'; err.style.display='block'; return;
+      }
+      const offsets = Array.from({length:N}, (_,i)=> start + i*gap);
+      const stops   = offsets.map(off => S - off);
+      const takes   = offsets.map(off => T + off);
+      if (stops.some(d=>d<=0)){
+        const maxOff = Math.max(...offsets);
+        err.textContent = `설정 오류: S(${S}) > start + (N-1)*gap 이어야 합니다. 현재 최대 오프셋: ${nf(maxOff,2)}`;
+        err.style.display='block'; return;
+      }
+
+      const D = K*V; 
+      let lots=[];
+      if (mode==='equal_lot'){
+        const denom = D * stops.reduce((a,b)=>a+b,0);
+        const L = floorStep(R/denom, lotStep);
+        lots = Array(N).fill(L);
+      } else {
+        const perLoss = R/N;
+        lots = stops.map(d => {
+          let Li = floorStep(perLoss / (D*d), lotStep);
+          if (Li < lotStep && Li > 0) Li = lotStep; 
+          return Li;
+        });
+      }
+
+      const tbody = $('#tbody');
+      tbody.innerHTML='';
+      let totLoss=0, totProfit=0, totLot=0;
+      for (let i=0;i<N;i++){
+        const off = offsets[i];
+        const L   = lots[i];
+        const loss  = D * stops[i] * L;
+        const profit= D * takes[i] * L;
+        totLoss+=loss; totProfit+=profit; totLot+=L;
+        const tr=document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i}</td>
+          <td>${nf(off, gap<1?2:1)}</td>
+          <td>KTR</td>
+          <td>${nf(L,2)}</td>
+          <td>$${nf(loss)}</td>
+          <td>$${nf(profit)}</td>`;
+        tbody.appendChild(tr);
+      }
+      $('#totLoss').textContent = '$'+nf(totLoss);
+      $('#totProfit').textContent = '$'+nf(totProfit);
+      $('#totLot').textContent   = nf(totLot,2)+' 랏';
+    }
+
+    function toCSV(){
+      const K=$('#K').value,V=$('#V').value,R=$('#R').value,S=$('#S').value,T=$('#T').value,N=+$('#N').value,start=$('#start').value,gap=$('#gap').value,lotStep=$('#lotStep').value,mode=document.querySelector('input[name="mode"]:checked').value;
+      const rows=[["K","V","R","S","T","N","start","gap","lotStep","mode"],[K,V,R,S,T,N,start,gap,lotStep,mode],[],["#","offset","KTR","lot","loss","profit"]];
+      document.querySelectorAll('#tbody tr').forEach(tr=>{
+        const tds=[...tr.children].map(td=>td.textContent.replace(/[$,\s]+/g,''));
+        rows.push([tds[0],tds[1],"KTR",tds[3],tds[4],tds[5]]);
+      });
+      const csv = rows.map(r=>r.map(x=>`"${String(x).replaceAll('"','""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'ktr_calc.html.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    $('#calc').addEventListener('click', calc);
+    $('#csv').addEventListener('click', toCSV);
+    window.addEventListener('load', calc);
+  </script>
+</body>
+</html>
